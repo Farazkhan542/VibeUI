@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { useStore } from '@/lib/store'
 import dynamic from 'next/dynamic'
 import StageRail from '@/components/StageRail'
+import TopNav from '@/components/TopNav'
 import { exportComponent } from '@/lib/exportComponent'
 import { exportProject } from '@/lib/exportProject'
 
@@ -85,21 +86,7 @@ export default function ResultPage() {
     <div
       style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', position: 'relative' }}
     >
-      {/* Wordmark */}
-      <div className="fixed top-6 left-6" style={{ zIndex: 50 }}>
-        <span
-          style={{
-            fontFamily: 'var(--font-syne), sans-serif',
-            fontSize: '14px',
-            fontWeight: 700,
-            color: 'var(--accent)',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-          }}
-        >
-          VIBEUI
-        </span>
-      </div>
+      <TopNav />
 
       <StageRail phase={phase} />
 

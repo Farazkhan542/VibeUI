@@ -13,6 +13,7 @@ interface AppState {
   phase: Phase
   hasHydrated: boolean
   model: 'gemini-2.5-flash' | 'gemini-2.5-pro'
+  globalError: string | null
 
   addMessage: (m: Message) => void
   setBrief: (b: DesignBrief) => void
@@ -28,6 +29,7 @@ interface AppState {
   regenerate: () => void
   setHasHydrated: (v: boolean) => void
   setModel: (m: AppState['model']) => void
+  setGlobalError: (message: string | null) => void
 }
 
 const initial = {
@@ -47,6 +49,7 @@ export const useStore = create<AppState>()(
     (set) => ({
       ...initial,
       hasHydrated: false,
+      globalError: null,
       addMessage: (m) => set((s) => ({ messages: [...s.messages, m] })),
       setBrief: (b) => set({ brief: b }),
       addLog: (line) => set((s) => ({ activityLog: [...s.activityLog, line] })),
@@ -76,6 +79,7 @@ export const useStore = create<AppState>()(
         }),
       setHasHydrated: (v) => set({ hasHydrated: v }),
       setModel: (m) => set({ model: m }),
+      setGlobalError: (message) => set({ globalError: message }),
     }),
     {
       name: 'vibeui-session',

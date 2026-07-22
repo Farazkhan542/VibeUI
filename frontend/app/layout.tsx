@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Syne, DM_Sans } from 'next/font/google'
 import './globals.css'
 import StoreHydration from '@/components/StoreHydration'
+import GlobalErrorModal from '@/components/GlobalErrorModal'
 
 const syne = Syne({
   subsets: ['latin'],
@@ -37,6 +38,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <StoreHydration />
+        <GlobalErrorModal />
         {children}
       </body>
     </html>

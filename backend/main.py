@@ -30,6 +30,21 @@ app.add_middleware(
 )
 
 
+def clean_error(e: Exception) -> tuple[int, str]:
+    """Turns a raw Gemini/SDK exception into a status code + a message
+    that's actually useful to a user, instead of a raw JSON blob."""
+    text = str(e)
+    if "RESOURCE_EXHAUSTED" in text or "quota" in text.lower():
+        return 429, (
+            "Your Gemini API key has hit its usage quota. Wait a while and try "
+            "again, or check your plan and limits at "
+            "ai.google.dev/gemini-api/docs/rate-limits."
+        )
+    if "API_KEY_INVALID" in text or "API key not valid" in text:
+        return 401, "That Gemini API key isn't valid. Double-check it in Settings."
+    return 500, text
+
+
 def resolve_gemini_key(user_id: str) -> str:
     result = (
         get_admin_client()
@@ -83,7 +98,8 @@ async def chat(req: VibeChatRequest, user_id: str = Depends(get_current_user_id)
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        status, detail = clean_error(e)
+        raise HTTPException(status_code=status, detail=detail)
 
 
 # ── Phase 2 + 3: Research → Generate → Polish (streamed SSE) ───
@@ -119,7 +135,8 @@ async def build(req: ResearchRequest, user_id: str = Depends(get_current_user_id
                 })
             })
         except Exception as e:
-            await queue.put({"event": "error", "data": str(e)})
+            _, detail = clean_error(e)
+            await queue.put({"event": "error", "data": detail})
         finally:
             await queue.put(None)
 

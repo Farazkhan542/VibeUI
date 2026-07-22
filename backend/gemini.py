@@ -52,7 +52,7 @@ async def run_vibe_chat(messages: list, api_key: str, model: str = DEFAULT_MODEL
     clean = text.replace("```json", "").replace("```", "").strip()
 
     try:
-        data = json.loads(clean)
+        data = json.loads(clean, strict=False)
         if data.get("brief_ready"):
             return {"type": "brief", "brief": data, "message": None}
     except Exception:
@@ -88,13 +88,16 @@ async def run_research(brief: DesignBrief, api_key: str, model: str = DEFAULT_MO
     raw = response.text.strip()
     raw = raw.replace("```json", "").replace("```", "").strip()
 
+    # strict=False: the model sometimes emits literal newlines/tabs inside
+    # the component_code string instead of escaping them as \n — those are
+    # control characters that strict JSON parsing rejects outright.
     try:
-        data = json.loads(raw)
+        data = json.loads(raw, strict=False)
     except json.JSONDecodeError:
         start = raw.find("{")
         end = raw.rfind("}") + 1
         if start != -1 and end > start:
-            data = json.loads(raw[start:end])
+            data = json.loads(raw[start:end], strict=False)
         else:
             raise ValueError(f"Could not parse Gemini response: {raw[:300]}")
 

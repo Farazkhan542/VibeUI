@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '@/lib/store'
 import { sendMessage } from '@/lib/api'
+import { isQuotaError } from '@/lib/errors'
 import type { Message } from '@/lib/types'
 
 export default function VibeChat({ onBriefReady }: { onBriefReady: () => void }) {
-  const { messages, addMessage, setBrief, setPhase, hasHydrated } = useStore()
+  const { messages, addMessage, setBrief, setPhase, hasHydrated, setGlobalError } = useStore()
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -36,8 +37,13 @@ export default function VibeChat({ onBriefReady }: { onBriefReady: () => void })
       if (res.type === 'message') {
         addMessage({ role: 'assistant', content: res.message })
       }
-    } catch {
-      addMessage({ role: 'assistant', content: "What are you building and what industry is it for?" })
+    } catch (err) {
+      // Surface the real reason (e.g. "No Gemini API key saved") instead of
+      // silently faking a normal question — otherwise a missing key looks
+      // like a working chat until later questions mysteriously fail too.
+      const message = err instanceof Error ? err.message : 'Error reaching server.'
+      if (isQuotaError(message)) setGlobalError(message)
+      addMessage({ role: 'assistant', content: message })
     } finally {
       setLoading(false)
     }
@@ -64,8 +70,10 @@ export default function VibeChat({ onBriefReady }: { onBriefReady: () => void })
       } else {
         addMessage({ role: 'assistant', content: res.message })
       }
-    } catch {
-      addMessage({ role: 'assistant', content: 'Error reaching server. Is the backend running on port 8000?' })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error reaching server. Is the backend running on port 8000?'
+      if (isQuotaError(message)) setGlobalError(message)
+      addMessage({ role: 'assistant', content: message })
     } finally {
       setLoading(false)
       inputRef.current?.focus()

@@ -10,13 +10,22 @@ async function authHeader(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+async function errorDetail(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json()
+    return body?.detail || fallback
+  } catch {
+    return fallback
+  }
+}
+
 export async function sendMessage(messages: Message[]) {
   const res = await fetch(`${BASE}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     body: JSON.stringify({ messages }),
   })
-  if (!res.ok) throw new Error(`Chat API error: ${res.status}`)
+  if (!res.ok) throw new Error(await errorDetail(res, `Chat API error: ${res.status}`))
   return res.json()
 }
 
@@ -38,7 +47,7 @@ export async function startBuild(
     body: JSON.stringify({ brief, model }),
   })
     .then(async (res) => {
-      if (!res.ok) throw new Error(`Build API error: ${res.status}`)
+      if (!res.ok) throw new Error(await errorDetail(res, `Build API error: ${res.status}`))
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
       let buffer = ''

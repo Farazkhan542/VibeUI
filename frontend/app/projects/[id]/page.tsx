@@ -6,6 +6,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabaseClient'
 import type { DesignBrief } from '@/lib/types'
+import TopNav from '@/components/TopNav'
 
 const ComponentPreview = dynamic(() => import('@/components/ComponentPreview'), {
   ssr: false,
@@ -57,6 +58,7 @@ export default function ProjectDetailPage() {
   if (project === undefined) {
     return (
       <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', padding: '80px 24px' }}>
+        <TopNav />
         <p style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>
       </div>
     )
@@ -65,6 +67,7 @@ export default function ProjectDetailPage() {
   if (project === null) {
     return (
       <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', padding: '80px 24px' }}>
+        <TopNav />
         <Link href="/projects" style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 13, color: 'var(--text-muted)' }}>
           ← Back to projects
         </Link>
@@ -77,6 +80,7 @@ export default function ProjectDetailPage() {
 
   return (
     <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh' }}>
+      <TopNav />
       <div style={{ maxWidth: 800, margin: '0 auto', padding: '80px 24px' }}>
         <Link href="/projects" style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 13, color: 'var(--text-muted)' }}>
           ← Back to projects

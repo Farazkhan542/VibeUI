@@ -6,12 +6,14 @@ import { motion } from 'framer-motion'
 import { useStore } from '@/lib/store'
 import { startBuild } from '@/lib/api'
 import { createClient } from '@/lib/supabaseClient'
+import { isQuotaError } from '@/lib/errors'
 import ActivityLog from '@/components/ActivityLog'
 import StageRail from '@/components/StageRail'
+import TopNav from '@/components/TopNav'
 
 export default function ResearchPage() {
   const router = useRouter()
-  const { brief, activityLog, addLog, setResult, setPhase, phase, reset, hasHydrated, model } =
+  const { brief, activityLog, addLog, setResult, setPhase, phase, reset, hasHydrated, model, setGlobalError } =
     useStore()
   const [hasError, setHasError] = useState(false)
   const started = useRef(false)
@@ -48,6 +50,7 @@ export default function ResearchPage() {
       (err) => {
         addLog(`Error: ${err}`)
         setHasError(true)
+        if (isQuotaError(err)) setGlobalError(err)
       }
     )
   }
@@ -81,21 +84,7 @@ export default function ResearchPage() {
     <div
       style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', position: 'relative' }}
     >
-      {/* Wordmark */}
-      <div className="fixed top-6 left-6" style={{ zIndex: 50 }}>
-        <span
-          style={{
-            fontFamily: 'var(--font-syne), sans-serif',
-            fontSize: '14px',
-            fontWeight: 700,
-            color: 'var(--accent)',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-          }}
-        >
-          VIBEUI
-        </span>
-      </div>
+      <TopNav />
 
       <StageRail phase={phase} />
 

@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabaseClient'
 import { useStore } from '@/lib/store'
+import TopNav from '@/components/TopNav'
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const MODELS = [
@@ -96,14 +96,8 @@ export default function SettingsPage() {
 
   return (
     <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh' }}>
+      <TopNav />
       <div style={{ maxWidth: 480, margin: '0 auto', padding: '80px 24px' }}>
-        <Link
-          href="/"
-          style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 13, color: 'var(--text-muted)' }}
-        >
-          ← Back
-        </Link>
-
         <h1
           style={{
             fontFamily: 'var(--font-syne), sans-serif',

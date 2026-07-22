@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabaseClient'
 import type { DesignBrief } from '@/lib/types'
+import TopNav from '@/components/TopNav'
 
 interface ProjectRow {
   id: string
@@ -26,11 +27,8 @@ export default function ProjectsPage() {
 
   return (
     <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh' }}>
+      <TopNav />
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 24px' }}>
-        <Link href="/" style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 13, color: 'var(--text-muted)' }}>
-          ← Back
-        </Link>
-
         <h1
           style={{
             fontFamily: 'var(--font-syne), sans-serif',
