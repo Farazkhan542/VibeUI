@@ -1,19 +1,28 @@
 import type { Message, DesignBrief } from './types'
+import { createClient } from './supabaseClient'
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+async function authHeader(): Promise<Record<string, string>> {
+  const supabase = createClient()
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
 
 export async function sendMessage(messages: Message[]) {
   const res = await fetch(`${BASE}/api/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     body: JSON.stringify({ messages }),
   })
   if (!res.ok) throw new Error(`Chat API error: ${res.status}`)
   return res.json()
 }
 
-export function startBuild(
+export async function startBuild(
   brief: DesignBrief,
+  model: string,
   onActivity: (msg: string) => void,
   onDone: (data: {
     competitors: string[]
@@ -25,8 +34,8 @@ export function startBuild(
 ) {
   fetch(`${BASE}/api/build`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ brief }),
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+    body: JSON.stringify({ brief, model }),
   })
     .then(async (res) => {
       if (!res.ok) throw new Error(`Build API error: ${res.status}`)

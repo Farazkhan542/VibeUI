@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useStore } from '@/lib/store'
 import { startBuild } from '@/lib/api'
+import { createClient } from '@/lib/supabaseClient'
 import ActivityLog from '@/components/ActivityLog'
 import StageRail from '@/components/StageRail'
 
 export default function ResearchPage() {
   const router = useRouter()
-  const { brief, activityLog, addLog, setResult, setPhase, phase, reset } = useStore()
+  const { brief, activityLog, addLog, setResult, setPhase, phase, reset, hasHydrated, model } =
+    useStore()
   const [hasError, setHasError] = useState(false)
   const started = useRef(false)
 
@@ -21,10 +23,26 @@ export default function ResearchPage() {
 
     startBuild(
       brief,
+      model,
       (msg) => addLog(msg),
       (data) => {
         setResult(data)
         setPhase('done')
+        // Save to the account's project history — best-effort, doesn't
+        // block navigation if it fails.
+        createClient()
+          .from('projects')
+          .insert({
+            brief,
+            competitors: data.competitors,
+            dominant_pattern: data.dominant_pattern,
+            opportunity: data.opportunity,
+            component_code: data.component_code,
+            model,
+          })
+          .then(({ error }) => {
+            if (error) console.error('Failed to save project history:', error.message)
+          })
         setTimeout(() => router.push('/result'), 600)
       },
       (err) => {
@@ -35,6 +53,7 @@ export default function ResearchPage() {
   }
 
   useEffect(() => {
+    if (!hasHydrated) return
     if (!brief) {
       router.replace('/')
       return
@@ -42,7 +61,7 @@ export default function ResearchPage() {
     if (!started.current) {
       runBuild()
     }
-  }, [])
+  }, [hasHydrated])
 
   const done = activityLog.includes('Done')
 

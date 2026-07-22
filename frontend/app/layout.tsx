@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Syne, DM_Sans } from 'next/font/google'
 import './globals.css'
+import StoreHydration from '@/components/StoreHydration'
 
 const syne = Syne({
   subsets: ['latin'],
@@ -33,7 +34,9 @@ export default function RootLayout({
           backgroundColor: 'var(--bg)',
           color: 'var(--text)',
         }}
+        suppressHydrationWarning
       >
+        <StoreHydration />
         {children}
       </body>
     </html>

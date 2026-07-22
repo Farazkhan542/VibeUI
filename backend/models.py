@@ -24,3 +24,8 @@ class DesignBrief(BaseModel):
 
 class ResearchRequest(BaseModel):
     brief: DesignBrief
+    model: str = "gemini-2.5-flash"
+
+
+class SettingsKeyRequest(BaseModel):
+    api_key: str

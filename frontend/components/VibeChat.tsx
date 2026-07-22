@@ -7,7 +7,7 @@ import { sendMessage } from '@/lib/api'
 import type { Message } from '@/lib/types'
 
 export default function VibeChat({ onBriefReady }: { onBriefReady: () => void }) {
-  const { messages, addMessage, setBrief, setPhase } = useStore()
+  const { messages, addMessage, setBrief, setPhase, hasHydrated } = useStore()
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -15,11 +15,15 @@ export default function VibeChat({ onBriefReady }: { onBriefReady: () => void })
   const initiated = useRef(false)
 
   useEffect(() => {
+    // Wait for the persisted session to rehydrate first, otherwise a
+    // mid-chat refresh would briefly see an empty `messages` array and
+    // fire off a duplicate "start" message before history is restored.
+    if (!hasHydrated) return
     if (messages.length === 0 && !initiated.current) {
       initiated.current = true
       sendFirstMessage()
     }
-  }, [])
+  }, [hasHydrated])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

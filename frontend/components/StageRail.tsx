@@ -3,10 +3,10 @@
 import { motion } from 'framer-motion'
 import type { Phase } from '@/lib/types'
 
-const stages: { key: Phase | 'done'; label: string }[] = [
-  { key: 'vibe', label: 'Vibe' },
-  { key: 'research', label: 'Research' },
-  { key: 'done', label: 'Render' },
+const stages = [
+  { label: 'Vibe' },
+  { label: 'Research' },
+  { label: 'Render' },
 ]
 
 export default function StageRail({ phase }: { phase: Phase }) {
@@ -14,34 +14,50 @@ export default function StageRail({ phase }: { phase: Phase }) {
 
   return (
     <div
-      className="fixed right-6 top-1/2 -translate-y-1/2 flex flex-col items-center gap-6"
-      style={{ zIndex: 50 }}
+      style={{
+        position: 'fixed',
+        right: 24,
+        top: '50%',
+        transform: 'translateY(-50%)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 24,
+        zIndex: 50,
+      }}
     >
       {stages.map((s, i) => (
-        <div key={s.key} className="flex flex-col items-center gap-1">
-          <motion.div
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              backgroundColor:
-                i === activeIndex ? 'var(--accent)' : 'var(--border)',
-            }}
-            animate={
-              i === activeIndex
-                ? {
-                    boxShadow: [
-                      '0 0 0 0 rgba(232,255,71,0.4)',
-                      '0 0 0 8px rgba(232,255,71,0)',
-                    ],
-                  }
-                : {}
-            }
-            transition={{ repeat: Infinity, duration: 1.4 }}
-          />
+        <div key={s.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          {i === activeIndex ? (
+            <motion.div
+              animate={{
+                boxShadow: [
+                  '0 0 0 0px rgba(232,255,71,0.5)',
+                  '0 0 0 6px rgba(232,255,71,0)',
+                ],
+              }}
+              transition={{ repeat: Infinity, duration: 1.4, ease: 'easeOut' }}
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                backgroundColor: 'var(--accent)',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                backgroundColor: i < activeIndex ? 'var(--accent)' : 'var(--border)',
+                opacity: i < activeIndex ? 0.4 : 1,
+              }}
+            />
+          )}
           <span
             style={{
-              fontSize: '10px',
+              fontSize: 10,
               fontFamily: 'var(--font-dm-sans), sans-serif',
               color: i === activeIndex ? 'var(--accent)' : 'var(--text-muted)',
               letterSpacing: '0.05em',

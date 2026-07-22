@@ -1,27 +1,33 @@
 import os
 import json
-import asyncio
 from google import genai
 from google.genai import types
 from models import DesignBrief
 from prompts import VIBE_SYSTEM, RESEARCH_SYSTEM
 
-_client: genai.Client | None = None
-
-def get_client() -> genai.Client:
-    global _client
-    if _client is None:
-        # Force GEMINI_API_KEY — prevent system GOOGLE_API_KEY from interfering
-        api_key = os.environ["GEMINI_API_KEY"]
-        os.environ.pop("GOOGLE_API_KEY", None)
-        _client = genai.Client(api_key=api_key)
-    return _client
-
-MODEL = "gemini-2.5-flash"
+ALLOWED_MODELS = {"gemini-2.5-flash", "gemini-2.5-pro"}
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 
-async def run_vibe_chat(messages: list) -> dict:
-    client = get_client()
+def get_client(api_key: str) -> genai.Client:
+    # A shared deployment serves many users' own keys concurrently, so this
+    # builds a fresh client per request rather than caching a singleton.
+    if not api_key:
+        raise RuntimeError("No Gemini API key available for this request.")
+    # If GOOGLE_API_KEY is set anywhere in the environment, the SDK prefers
+    # it over the api_key we pass explicitly — drop it so each request
+    # actually uses that user's own key.
+    os.environ.pop("GOOGLE_API_KEY", None)
+    return genai.Client(api_key=api_key)
+
+
+def _resolve_model(model: str) -> str:
+    return model if model in ALLOWED_MODELS else DEFAULT_MODEL
+
+
+async def run_vibe_chat(messages: list, api_key: str, model: str = DEFAULT_MODEL) -> dict:
+    client = get_client(api_key)
+    model = _resolve_model(model)
 
     # Build history (all messages except last)
     # New SDK uses "model" not "assistant"
@@ -38,7 +44,7 @@ async def run_vibe_chat(messages: list) -> dict:
         temperature=0.7,
     )
 
-    chat = client.aio.chats.create(model=MODEL, history=history, config=config)
+    chat = client.aio.chats.create(model=model, history=history, config=config)
     response = await chat.send_message(messages[-1]["content"])
     text = response.text.strip()
 
@@ -55,8 +61,9 @@ async def run_vibe_chat(messages: list) -> dict:
     return {"type": "message", "message": text, "brief": None}
 
 
-async def run_research(brief: DesignBrief, stream_callback=None) -> dict:
-    client = get_client()
+async def run_research(brief: DesignBrief, api_key: str, model: str = DEFAULT_MODEL, stream_callback=None) -> dict:
+    client = get_client(api_key)
+    model = _resolve_model(model)
 
     if stream_callback:
         await stream_callback(f'Searching "{brief.niche} best UI examples 2025" ...')
@@ -68,7 +75,7 @@ async def run_research(brief: DesignBrief, stream_callback=None) -> dict:
     )
 
     response = await client.aio.models.generate_content(
-        model=MODEL,
+        model=model,
         contents=f"Design brief:\n{brief.model_dump_json(indent=2)}",
         config=config,
     )

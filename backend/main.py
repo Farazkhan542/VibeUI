@@ -1,9 +1,13 @@
-from fastapi import FastAPI
+import os
+
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
-from models import VibeChatRequest, ResearchRequest
+from models import VibeChatRequest, ResearchRequest, SettingsKeyRequest
 from gemini import run_vibe_chat, run_research
 from stitch import polish_with_stitch
+from auth import get_current_user_id, get_admin_client
+from crypto import encrypt, decrypt
 from dotenv import load_dotenv
 import json
 import asyncio
@@ -12,24 +16,80 @@ load_dotenv()
 
 app = FastAPI(title="VibeUI API")
 
+# FRONTEND_URL lets a deployed frontend (Vercel, etc.) talk to this backend
+# without a code change — defaults cover the local dev server.
+_allowed_origins = {"http://localhost:3000", "http://127.0.0.1:3000"}
+if os.environ.get("FRONTEND_URL"):
+    _allowed_origins.add(os.environ["FRONTEND_URL"])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=list(_allowed_origins),
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
+def resolve_gemini_key(user_id: str) -> str:
+    result = (
+        get_admin_client()
+        .table("profiles")
+        .select("gemini_api_key_encrypted")
+        .eq("id", user_id)
+        .single()
+        .execute()
+    )
+    encrypted = result.data.get("gemini_api_key_encrypted") if result.data else None
+    if not encrypted:
+        raise HTTPException(status_code=400, detail="No Gemini API key saved. Add one in Settings.")
+    return decrypt(encrypted)
+
+
+# ── Account settings: Gemini API key ────────────────────────────
+@app.post("/api/settings/key")
+async def save_key(req: SettingsKeyRequest, user_id: str = Depends(get_current_user_id)):
+    encrypted = encrypt(req.api_key)
+    get_admin_client().table("profiles").update({"gemini_api_key_encrypted": encrypted}).eq("id", user_id).execute()
+    return {"ok": True}
+
+
+@app.get("/api/settings/key/status")
+async def key_status(user_id: str = Depends(get_current_user_id)):
+    result = (
+        get_admin_client()
+        .table("profiles")
+        .select("gemini_api_key_encrypted")
+        .eq("id", user_id)
+        .single()
+        .execute()
+    )
+    has_key = bool(result.data and result.data.get("gemini_api_key_encrypted"))
+    return {"hasKey": has_key}
+
+
+@app.delete("/api/settings/key")
+async def clear_key(user_id: str = Depends(get_current_user_id)):
+    get_admin_client().table("profiles").update({"gemini_api_key_encrypted": None}).eq("id", user_id).execute()
+    return {"ok": True}
+
+
 # ── Phase 1: Vibe interview ─────────────────────────────────────
 @app.post("/api/chat")
-async def chat(req: VibeChatRequest):
+async def chat(req: VibeChatRequest, user_id: str = Depends(get_current_user_id)):
     messages = [m.model_dump() for m in req.messages]
-    return await run_vibe_chat(messages)
+    try:
+        api_key = resolve_gemini_key(user_id)
+        return await run_vibe_chat(messages, api_key)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── Phase 2 + 3: Research → Generate → Polish (streamed SSE) ───
 @app.post("/api/build")
-async def build(req: ResearchRequest):
+async def build(req: ResearchRequest, user_id: str = Depends(get_current_user_id)):
+    api_key = resolve_gemini_key(user_id)
     queue: asyncio.Queue = asyncio.Queue()
 
     async def stream_callback(msg: str):
@@ -38,7 +98,7 @@ async def build(req: ResearchRequest):
     async def run():
         try:
             # Phase 2 — Gemini research + codegen
-            result = await run_research(req.brief, stream_callback)
+            result = await run_research(req.brief, api_key, req.model, stream_callback)
 
             await stream_callback("Sending to Stitch for polish ...")
 

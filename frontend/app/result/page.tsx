@@ -6,6 +6,8 @@ import { motion } from 'framer-motion'
 import { useStore } from '@/lib/store'
 import dynamic from 'next/dynamic'
 import StageRail from '@/components/StageRail'
+import { exportComponent } from '@/lib/exportComponent'
+import { exportProject } from '@/lib/exportProject'
 
 // Load Sandpack client-side only
 const ComponentPreview = dynamic(() => import('@/components/ComponentPreview'), {
@@ -32,15 +34,22 @@ const ComponentPreview = dynamic(() => import('@/components/ComponentPreview'), 
 
 export default function ResultPage() {
   const router = useRouter()
-  const { competitors, dominantPattern, opportunity, componentCode, reset, phase } =
+  const { brief, competitors, dominantPattern, opportunity, componentCode, reset, regenerate, phase, hasHydrated } =
     useStore()
   const [copied, setCopied] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
+    if (!hasHydrated) return
     if (!componentCode) {
       router.replace('/')
     }
-  }, [])
+  }, [hasHydrated, componentCode])
+
+  function handleRegenerate() {
+    regenerate()
+    router.push('/research')
+  }
 
   function handleCopy() {
     if (!componentCode) return
@@ -48,6 +57,21 @@ export default function ResultPage() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
+  }
+
+  function handleDownload() {
+    if (!componentCode) return
+    exportComponent(componentCode, brief)
+  }
+
+  async function handleExportProject() {
+    if (!componentCode || exporting) return
+    setExporting(true)
+    try {
+      await exportProject(componentCode, brief)
+    } finally {
+      setExporting(false)
+    }
   }
 
   function handleStartOver() {
@@ -252,6 +276,85 @@ export default function ResultPage() {
               onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
             >
               {copied ? 'Copied ✓' : 'Copy Code'}
+            </button>
+
+            {/* Regenerate */}
+            <button
+              onClick={handleRegenerate}
+              style={{
+                backgroundColor: 'transparent',
+                color: 'var(--accent)',
+                border: '1px solid var(--accent)',
+                borderRadius: '6px',
+                padding: '12px 20px',
+                fontFamily: 'var(--font-dm-sans), sans-serif',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                textAlign: 'center',
+                transition: 'opacity 0.15s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            >
+              Regenerate Variation
+            </button>
+
+            {/* Download component file */}
+            <button
+              onClick={handleDownload}
+              style={{
+                backgroundColor: 'transparent',
+                color: 'var(--text-muted)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                padding: '12px 20px',
+                fontFamily: 'var(--font-dm-sans), sans-serif',
+                fontSize: '13px',
+                cursor: 'pointer',
+                textAlign: 'center',
+                transition: 'border-color 0.15s, color 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--text-muted)'
+                e.currentTarget.style.color = 'var(--text)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)'
+                e.currentTarget.style.color = 'var(--text-muted)'
+              }}
+            >
+              Download .tsx
+            </button>
+
+            {/* Export full mini-project */}
+            <button
+              onClick={handleExportProject}
+              disabled={exporting}
+              style={{
+                backgroundColor: 'transparent',
+                color: 'var(--text-muted)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                padding: '12px 20px',
+                fontFamily: 'var(--font-dm-sans), sans-serif',
+                fontSize: '13px',
+                cursor: exporting ? 'default' : 'pointer',
+                textAlign: 'center',
+                opacity: exporting ? 0.6 : 1,
+                transition: 'border-color 0.15s, color 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                if (exporting) return
+                e.currentTarget.style.borderColor = 'var(--text-muted)'
+                e.currentTarget.style.color = 'var(--text)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)'
+                e.currentTarget.style.color = 'var(--text-muted)'
+              }}
+            >
+              {exporting ? 'Zipping…' : 'Export Project (.zip)'}
             </button>
 
             {/* Start Over */}
