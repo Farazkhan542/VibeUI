@@ -1,9 +1,18 @@
 import os
+import re
 import json
 from google import genai
 from google.genai import types
 from models import DesignBrief
 from prompts import VIBE_SYSTEM, RESEARCH_SYSTEM
+
+
+def _extract_fenced(text: str, *langs: str) -> str | None:
+    for lang in langs:
+        match = re.search(rf"```{lang}\s*\n(.*?)```", text, re.DOTALL)
+        if match:
+            return match.group(1).strip()
+    return None
 
 ALLOWED_MODELS = {"gemini-2.5-flash", "gemini-2.5-pro"}
 DEFAULT_MODEL = "gemini-2.5-flash"
@@ -86,18 +95,32 @@ async def run_research(brief: DesignBrief, api_key: str, model: str = DEFAULT_MO
         await stream_callback("Generating React component ...")
 
     raw = response.text.strip()
-    raw = raw.replace("```json", "").replace("```", "").strip()
 
-    # strict=False: the model sometimes emits literal newlines/tabs inside
-    # the component_code string instead of escaping them as \n — those are
-    # control characters that strict JSON parsing rejects outright.
+    # Preferred path: the prompt asks for the code in its OWN fenced block,
+    # as plain JSX — never JSON-escaped. A full React component reliably
+    # contains quotes/apostrophes/newlines that break JSON string escaping
+    # when the model has to cram it into a JSON string value (this was a
+    # real, recurring "Unterminated string" / "Invalid control character"
+    # failure), so the metadata (small, low-risk) and the code (large,
+    # risky) are parsed independently.
+    json_block = _extract_fenced(raw, "json")
+    code_block = _extract_fenced(raw, "jsx", "tsx", "javascript", "js")
+
+    if json_block and code_block:
+        data = json.loads(json_block, strict=False)
+        data["component_code"] = code_block
+        return data
+
+    # Fallback: older single-JSON-blob format, in case the model didn't
+    # follow the two-fence instruction.
+    cleaned = raw.replace("```json", "").replace("```", "").strip()
     try:
-        data = json.loads(raw, strict=False)
+        data = json.loads(cleaned, strict=False)
     except json.JSONDecodeError:
-        start = raw.find("{")
-        end = raw.rfind("}") + 1
+        start = cleaned.find("{")
+        end = cleaned.rfind("}") + 1
         if start != -1 and end > start:
-            data = json.loads(raw[start:end], strict=False)
+            data = json.loads(cleaned[start:end], strict=False)
         else:
             raise ValueError(f"Could not parse Gemini response: {raw[:300]}")
 

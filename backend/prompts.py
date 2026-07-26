@@ -138,11 +138,21 @@ The component must still be:
 - Visually differentiated from what the competitors are doing
 - Matching the brief: color mood, layout density, typography feel, target feeling
 
-Return ONLY this JSON. No markdown. No explanation. No code fences:
+Return EXACTLY this format — a fenced json block followed by a fenced jsx
+block. Nothing before, between, or after them. Do NOT put the component
+code inside the JSON (real components contain quotes, apostrophes, and
+newlines that break JSON string escaping) — the code goes in its own
+fence, written as plain, valid JSX:
+
+```json
 {
   "competitors": ["url1", "url2", "url3"],
   "dominant_pattern": "one sentence describing what everyone is doing",
-  "opportunity": "one sentence on what nobody is doing",
-  "component_code": "FULL JSX string here — the entire React component"
+  "opportunity": "one sentence on what nobody is doing"
 }
+```
+
+```jsx
+// the entire React component goes here as plain JSX — not JSON-escaped
+```
 """
