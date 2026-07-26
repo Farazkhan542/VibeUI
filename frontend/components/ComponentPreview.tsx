@@ -114,6 +114,17 @@ export default function ComponentPreview({ code }: Props) {
         files={{ '/App.js': { code: wrapCode(code), active: true } }}
         theme={THEME}
         options={{ autorun: true, autoReload: true }}
+        customSetup={{
+          // Safety net: the prompt tells Gemini the component must be
+          // self-contained (no imports except React), but models reach for
+          // an icon library out of habit anyway. Rather than rely purely on
+          // the instruction, make the sandbox tolerate the common ones so
+          // a stray import doesn't crash the whole preview.
+          dependencies: {
+            '@heroicons/react': 'latest',
+            'lucide-react': 'latest',
+          },
+        }}
       >
         <div style={{ display: tab === 'preview' ? 'block' : 'none' }}>
           <SandpackPreview

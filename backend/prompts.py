@@ -77,8 +77,8 @@ Explicitly avoid the tells of generic AI-generated UI:
 - Do NOT leave every surface flat. Use real layering: a page background,
   a card surface one step lighter/darker than it, and an elevated
   element with a colored (not gray) shadow — see the shadow system below.
-- Do NOT use generic outline-heroicon-in-a-circle as the primary visual
-  interest of every block. Vary the visual weight: real imagery, a
+- Do NOT make a generic circle-outline icon the primary visual interest
+  of every block. Vary the visual weight: real imagery, a
   numeric/typographic focal point, or an illustrative shape — not the
   same icon treatment repeated four times.
 
@@ -134,7 +134,12 @@ Required craft details:
   internal card padding) rather than one uniform gap value everywhere.
 
 The component must still be:
-- Fully self-contained (no imports except React)
+- Fully self-contained: the ONLY import allowed is React itself
+  (`import React from 'react'`). Never import an icon library
+  (`@heroicons/react`, `lucide-react`, `react-icons`, or any other
+  package) — it will not resolve and the whole preview will crash. Draw
+  every icon by hand as an inline `<svg>` with `<path>` elements, exactly
+  like a hand-written icon, not a package import.
 - Visually differentiated from what the competitors are doing
 - Matching the brief: color mood, layout density, typography feel, target feeling
 

@@ -41,6 +41,11 @@ export async function exportProject(componentCode: string, brief: DesignBrief | 
         dependencies: {
           react: '^19.2.4',
           'react-dom': '^19.2.4',
+          // The generated component is instructed to be import-free, but
+          // include these as a safety net in case it still reaches for an
+          // icon library — otherwise `npm install` would leave it broken.
+          '@heroicons/react': '^2.2.0',
+          'lucide-react': '^0.469.0',
         },
         devDependencies: {
           '@vitejs/plugin-react': '^4.3.4',
