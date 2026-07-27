@@ -1,11 +1,10 @@
 import JSZip from 'jszip'
-import type { DesignBrief } from './types'
+import type { DesignBrief, Screen } from './types'
 import { slugify } from './slug'
 
-// The generated component isn't guaranteed to have a default export (the
-// research prompt doesn't enforce a function name) — same assumption
-// ComponentPreview.tsx makes for the Sandpack wrapper, but detected instead
-// of hardcoded to "App".
+// A generated screen isn't guaranteed to have a default export (the prompt
+// asks for one but doesn't enforce a name) — detect the component name and
+// add a default export if missing, same assumption ComponentPreview makes.
 function ensureDefaultExport(code: string): string {
   if (/export\s+default/.test(code)) return code
   const match = code.match(/(?:function|const)\s+([A-Z]\w*)/)
@@ -13,15 +12,22 @@ function ensureDefaultExport(code: string): string {
   return `${code}\nexport default ${name};`
 }
 
-// Bundles the generated component into a minimal, runnable Vite + React +
-// TypeScript project and downloads it as a zip. Tailwind is loaded via CDN
-// script in index.html (the same trick ComponentPreview.tsx uses for the
-// Sandpack preview) so the scaffold renders correctly with zero build
-// configuration — no PostCSS/Tailwind version to keep in sync.
-export async function exportProject(componentCode: string, brief: DesignBrief | null) {
+// Bundles the generated screens into a minimal, runnable Vite + React +
+// TypeScript project and downloads it as a zip. Each screen is its own file
+// under src/screens/, and App.tsx switches between them with a small nav.
+// Tailwind is loaded via CDN in index.html (the same trick the live preview
+// uses) so the scaffold renders with zero build configuration.
+export async function exportProject(screens: Screen[], brief: DesignBrief | null) {
   const name = brief ? slugify(brief.niche || brief.industry) : 'vibeui-project'
-  const title = brief ? `${brief.industry} — ${brief.niche}` : 'VibeUI component'
-  const appCode = ensureDefaultExport(componentCode)
+  const title = brief ? `${brief.industry} — ${brief.niche}` : 'VibeUI project'
+
+  // Stable, unique file slug per screen (index-prefixed to avoid collisions).
+  const files = screens.map((s, i) => ({
+    name: s.name,
+    fileSlug: `${i + 1}-${slugify(s.name) || 'screen'}`,
+    importId: `Screen${i}`,
+    code: ensureDefaultExport(s.code),
+  }))
 
   const zip = new JSZip()
 
@@ -33,17 +39,12 @@ export async function exportProject(componentCode: string, brief: DesignBrief | 
         private: true,
         version: '0.1.0',
         type: 'module',
-        scripts: {
-          dev: 'vite',
-          build: 'vite build',
-          preview: 'vite preview',
-        },
+        scripts: { dev: 'vite', build: 'vite build', preview: 'vite preview' },
         dependencies: {
           react: '^19.2.4',
           'react-dom': '^19.2.4',
-          // The generated component is instructed to be import-free, but
-          // include these as a safety net in case it still reaches for an
-          // icon library — otherwise `npm install` would leave it broken.
+          // Import-free is instructed, but keep these as a safety net so a
+          // stray icon-library import doesn't break `npm install`.
           '@heroicons/react': '^2.2.0',
           'lucide-react': '^0.469.0',
         },
@@ -127,6 +128,67 @@ createRoot(document.getElementById('root')!).render(
 `
   )
 
+  // Each screen as its own module.
+  for (const f of files) {
+    zip.file(`src/screens/${f.fileSlug}.tsx`, f.code)
+  }
+
+  // App.tsx — imports every screen and (when there's more than one) shows a
+  // small floating nav to switch between them.
+  const imports = files.map((f) => `import ${f.importId} from './screens/${f.fileSlug}'`).join('\n')
+  const list = files.map((f) => `  { name: '${f.name.replace(/'/g, "\\'")}', Component: ${f.importId} },`).join('\n')
+  const appCode = `import { useState } from 'react'
+${imports}
+
+const SCREENS = [
+${list}
+]
+
+export default function App() {
+  const [active, setActive] = useState(0)
+  const Current = SCREENS[active].Component
+  return (
+    <>
+      {SCREENS.length > 1 && (
+        <nav
+          style={{
+            position: 'fixed',
+            top: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 9999,
+            display: 'flex',
+            gap: 6,
+            padding: 6,
+            borderRadius: 999,
+            background: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          {SCREENS.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => setActive(i)}
+              style={{
+                border: 'none',
+                borderRadius: 999,
+                padding: '6px 14px',
+                fontSize: 12,
+                cursor: 'pointer',
+                background: i === active ? '#fff' : 'transparent',
+                color: i === active ? '#000' : '#fff',
+              }}
+            >
+              {s.name}
+            </button>
+          ))}
+        </nav>
+      )}
+      <Current />
+    </>
+  )
+}
+`
   zip.file('src/App.tsx', appCode)
 
   const briefLines = brief
@@ -140,6 +202,8 @@ createRoot(document.getElementById('root')!).render(
       ].join('\n')
     : ''
 
+  const screenList = files.map((f) => `- \`src/screens/${f.fileSlug}.tsx\` — ${f.name}`).join('\n')
+
   zip.file(
     'README.md',
     `# ${title}
@@ -147,6 +211,12 @@ createRoot(document.getElementById('root')!).render(
 Generated by [VibeUI](https://github.com/Farazkhan542/VibeUI) from this design brief:
 
 ${briefLines}
+
+## Screens
+
+${screenList}
+
+Switch between them with the nav at the top of the running app.
 
 ## Run it
 

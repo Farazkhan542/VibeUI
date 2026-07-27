@@ -14,6 +14,18 @@ def _extract_fenced(text: str, *langs: str) -> str | None:
             return match.group(1).strip()
     return None
 
+
+def _extract_all_fenced(text: str, *langs: str) -> list[str]:
+    """All fenced blocks for the given language(s), in document order —
+    used to pull each screen's JSX out of its own code fence."""
+    blocks: list[str] = []
+    for lang in langs:
+        for match in re.finditer(rf"```{lang}\s*\n(.*?)```", text, re.DOTALL):
+            blocks.append(match.group(1).strip())
+        if blocks:
+            break
+    return blocks
+
 ALLOWED_MODELS = {"gemini-2.5-flash", "gemini-2.5-pro"}
 DEFAULT_MODEL = "gemini-2.5-flash"
 
@@ -81,6 +93,9 @@ async def run_research(brief: DesignBrief, api_key: str, model: str = DEFAULT_MO
         system_instruction=RESEARCH_SYSTEM,
         tools=[types.Tool(google_search=types.GoogleSearch())],
         temperature=0.7,
+        # Three full screens is a large response; the default output cap
+        # would truncate it. Gemini 2.5 supports up to 65k output tokens.
+        max_output_tokens=32768,
     )
 
     response = await client.aio.models.generate_content(
@@ -92,27 +107,29 @@ async def run_research(brief: DesignBrief, api_key: str, model: str = DEFAULT_MO
     if stream_callback:
         await stream_callback("Analyzing competitor UI patterns ...")
         await stream_callback("Identifying opportunity gap ...")
-        await stream_callback("Generating React component ...")
+        await stream_callback("Generating screens ...")
 
     raw = response.text.strip()
 
-    # Preferred path: the prompt asks for the code in its OWN fenced block,
-    # as plain JSX — never JSON-escaped. A full React component reliably
-    # contains quotes/apostrophes/newlines that break JSON string escaping
-    # when the model has to cram it into a JSON string value (this was a
-    # real, recurring "Unterminated string" / "Invalid control character"
-    # failure), so the metadata (small, low-risk) and the code (large,
-    # risky) are parsed independently.
+    # Preferred path: one json block (metadata + screen names), then one jsx
+    # fence per screen. Code is kept out of the JSON entirely — a full React
+    # component reliably contains quotes/apostrophes/newlines that break JSON
+    # string escaping when crammed into a string value (a real, recurring
+    # "Unterminated string" failure). So metadata and code are parsed apart.
     json_block = _extract_fenced(raw, "json")
-    code_block = _extract_fenced(raw, "jsx", "tsx", "javascript", "js")
+    code_blocks = _extract_all_fenced(raw, "jsx", "tsx", "javascript", "js")
 
-    if json_block and code_block:
+    if json_block and code_blocks:
         data = json.loads(json_block, strict=False)
-        data["component_code"] = code_block
+        names = data.get("screens") or []
+        screens = []
+        for i, code in enumerate(code_blocks):
+            name = names[i] if i < len(names) else f"Screen {i + 1}"
+            screens.append({"name": str(name), "code": code})
+        data["screens"] = screens
         return data
 
-    # Fallback: older single-JSON-blob format, in case the model didn't
-    # follow the two-fence instruction.
+    # Fallback: older single-JSON-blob format (one component_code string).
     cleaned = raw.replace("```json", "").replace("```", "").strip()
     try:
         data = json.loads(cleaned, strict=False)
@@ -124,4 +141,7 @@ async def run_research(brief: DesignBrief, api_key: str, model: str = DEFAULT_MO
         else:
             raise ValueError(f"Could not parse Gemini response: {raw[:300]}")
 
+    # Normalize the fallback into the screens shape too.
+    if "screens" not in data and data.get("component_code"):
+        data["screens"] = [{"name": "Screen 1", "code": data["component_code"]}]
     return data

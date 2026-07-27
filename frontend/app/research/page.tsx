@@ -39,6 +39,7 @@ export default function ResearchPage() {
             competitors: data.competitors,
             dominant_pattern: data.dominant_pattern,
             opportunity: data.opportunity,
+            screens: data.screens ?? null,
             component_code: data.component_code,
             model,
           })

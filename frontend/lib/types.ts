@@ -15,10 +15,16 @@ export interface DesignBrief {
   typography_feel: string
 }
 
+export interface Screen {
+  name: string
+  code: string
+}
+
 export interface ResearchResult {
   competitors: string[]
   dominant_pattern: string
   opportunity: string
+  screens: Screen[]
   component_code: string
 }
 

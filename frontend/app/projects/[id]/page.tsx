@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabaseClient'
-import type { DesignBrief } from '@/lib/types'
+import type { DesignBrief, Screen } from '@/lib/types'
 import TopNav from '@/components/TopNav'
 
 const ComponentPreview = dynamic(() => import('@/components/ComponentPreview'), {
@@ -37,6 +37,7 @@ interface ProjectRow {
   dominant_pattern: string
   opportunity: string
   component_code: string
+  screens: Screen[] | null
   model: string
   created_at: string
 }
@@ -44,12 +45,13 @@ interface ProjectRow {
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [project, setProject] = useState<ProjectRow | null | undefined>(undefined)
+  const [selected, setSelected] = useState(0)
 
   useEffect(() => {
     const supabase = createClient()
     supabase
       .from('projects')
-      .select('id, brief, competitors, dominant_pattern, opportunity, component_code, model, created_at')
+      .select('id, brief, competitors, dominant_pattern, opportunity, component_code, screens, model, created_at')
       .eq('id', id)
       .single()
       .then(({ data }) => setProject((data as ProjectRow) ?? null))
@@ -78,6 +80,15 @@ export default function ProjectDetailPage() {
     )
   }
 
+  // Older rows have only component_code; newer ones carry a screens array.
+  const screens: Screen[] =
+    project.screens && project.screens.length > 0
+      ? project.screens
+      : project.component_code
+        ? [{ name: 'Screen 1', code: project.component_code }]
+        : []
+  const current = screens[selected] ?? screens[0]
+
   return (
     <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh' }}>
       <TopNav />
@@ -101,7 +112,34 @@ export default function ProjectDetailPage() {
           {new Date(project.created_at).toLocaleString()} · {project.model}
         </p>
 
-        <ComponentPreview code={project.component_code} />
+        {screens.length > 1 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            {screens.map((s, i) => {
+              const active = i === selected
+              return (
+                <button
+                  key={i}
+                  onClick={() => setSelected(i)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 999,
+                    border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                    backgroundColor: active ? 'var(--accent)' : 'transparent',
+                    color: active ? '#0A0A0A' : 'var(--text-muted)',
+                    fontFamily: 'var(--font-dm-sans), sans-serif',
+                    fontSize: 12,
+                    fontWeight: active ? 600 : 400,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {s.name}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {current && <ComponentPreview key={selected} code={current.code} />}
       </div>
     </div>
   )

@@ -35,17 +35,39 @@ const ComponentPreview = dynamic(() => import('@/components/ComponentPreview'), 
 
 export default function ResultPage() {
   const router = useRouter()
-  const { brief, competitors, dominantPattern, opportunity, componentCode, reset, regenerate, phase, hasHydrated } =
-    useStore()
+  const {
+    brief,
+    competitors,
+    dominantPattern,
+    opportunity,
+    componentCode,
+    screens,
+    selectedScreen,
+    setSelectedScreen,
+    reset,
+    regenerate,
+    phase,
+    hasHydrated,
+  } = useStore()
   const [copied, setCopied] = useState(false)
   const [exporting, setExporting] = useState(false)
 
+  // Normalize: prefer the multi-screen array, fall back to the single
+  // component (older sessions) so nothing here has to special-case it.
+  const activeScreens =
+    screens.length > 0
+      ? screens
+      : componentCode
+        ? [{ name: 'Screen 1', code: componentCode }]
+        : []
+  const current = activeScreens[selectedScreen] ?? activeScreens[0]
+
   useEffect(() => {
     if (!hasHydrated) return
-    if (!componentCode) {
+    if (!componentCode && screens.length === 0) {
       router.replace('/app')
     }
-  }, [hasHydrated, componentCode])
+  }, [hasHydrated, componentCode, screens.length])
 
   function handleRegenerate() {
     regenerate()
@@ -53,23 +75,23 @@ export default function ResultPage() {
   }
 
   function handleCopy() {
-    if (!componentCode) return
-    navigator.clipboard.writeText(componentCode).then(() => {
+    if (!current) return
+    navigator.clipboard.writeText(current.code).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
   }
 
   function handleDownload() {
-    if (!componentCode) return
-    exportComponent(componentCode, brief)
+    if (!current) return
+    exportComponent(current.code, brief, current.name)
   }
 
   async function handleExportProject() {
-    if (!componentCode || exporting) return
+    if (activeScreens.length === 0 || exporting) return
     setExporting(true)
     try {
-      await exportProject(componentCode, brief)
+      await exportProject(activeScreens, brief)
     } finally {
       setExporting(false)
     }
@@ -80,7 +102,7 @@ export default function ResultPage() {
     router.push('/app')
   }
 
-  if (!componentCode) return null
+  if (activeScreens.length === 0) return null
 
   return (
     <div
@@ -214,12 +236,42 @@ export default function ResultPage() {
               fontSize: '16px',
               fontWeight: 700,
               color: 'var(--text)',
-              marginBottom: '20px',
+              marginBottom: '16px',
             }}
           >
-            Component
+            {activeScreens.length > 1 ? 'Screens' : 'Component'}
           </h2>
-          <ComponentPreview code={componentCode} />
+
+          {/* Screen switcher */}
+          {activeScreens.length > 1 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {activeScreens.map((s, i) => {
+                const active = i === selectedScreen
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedScreen(i)}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: 999,
+                      border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                      backgroundColor: active ? 'var(--accent)' : 'transparent',
+                      color: active ? '#0A0A0A' : 'var(--text-muted)',
+                      fontFamily: 'var(--font-dm-sans), sans-serif',
+                      fontSize: 12,
+                      fontWeight: active ? 600 : 400,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {s.name}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          <ComponentPreview key={selectedScreen} code={current.code} />
         </motion.div>
 
         {/* Right — Actions (25%) */}

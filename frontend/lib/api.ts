@@ -1,4 +1,4 @@
-import type { Message, DesignBrief } from './types'
+import type { Message, DesignBrief, Screen } from './types'
 import { createClient } from './supabaseClient'
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -37,6 +37,7 @@ export async function startBuild(
     competitors: string[]
     dominant_pattern: string
     opportunity: string
+    screens?: Screen[]
     component_code: string
   }) => void,
   onError: (err: string) => void
@@ -48,7 +49,8 @@ export async function startBuild(
     `Searching "${brief.niche} best UI examples 2025" ...`,
     'Analyzing competitor UI patterns ...',
     'Identifying opportunity gap ...',
-    'Generating React component ...',
+    'Designing your screens ...',
+    'Generating components ...',
   ]
   let step = 0
   onActivity(steps[step++])

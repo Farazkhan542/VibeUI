@@ -45,23 +45,40 @@ STEP 2 — For each competitor analyze:
 STEP 3 — Identify one thing everyone is doing that feels generic or overused.
 Identify one thing nobody is doing that would match this client's brief.
 
-STEP 4 — Generate a single complete React component using only Tailwind CSS,
-built to the standard of a senior product designer at a funded startup —
-not a template, not a hackathon demo. This is the part clients judge you on.
+STEP 4 — Generate EXACTLY 3 distinct screens for this product using only
+Tailwind CSS, each built to the standard of a senior product designer at a
+funded startup — not a template, not a hackathon demo. This is the part
+clients judge you on.
 
-Composition (pick whichever fits the niche, but it must have multiple
-visually distinct zones — never a single repeated card grid as the whole
-component):
-- Hero: a header/nav bar + a hero zone (real Unsplash photography used
-  with intent — as a full-bleed background with a gradient overlay, or an
-  art-directed side-by-side, never a random stock photo dropped in) +
-  at least one supporting section underneath (a stats bar, a 3-item
-  feature highlight, a social-proof strip, or similar).
-- Dashboard widget: a header row (title + context, e.g. a date range or
+Choose the 3 screens the product would actually need, based on the niche —
+not 3 variations of the same page. Think about the real user journey and
+pick the screens that matter, for example:
+- A SaaS/analytics product → a marketing landing/hero, a data dashboard,
+  and a settings or detail screen.
+- An e-commerce/storefront → a hero/home, a product-listing grid, and a
+  single product-detail (or cart/checkout) screen.
+- A booking/service product → a hero/home, a booking/scheduling screen,
+  and an account/confirmation screen.
+Pick whatever set genuinely fits THIS product; give each screen a short,
+clear name (1–2 words).
+
+Each individual screen must have multiple visually distinct zones — never a
+single repeated card grid as the whole screen:
+- A landing/hero screen: a header/nav bar + a hero zone (real Unsplash
+  photography used with intent — full-bleed background with a gradient
+  overlay, or an art-directed side-by-side, never a random stock photo
+  dropped in) + at least one supporting section underneath (a stats bar, a
+  3-item feature highlight, a social-proof strip, or similar).
+- A dashboard screen: a header row (title + context, e.g. a date range or
   status pill) + one "hero metric" that's visually dominant (larger type,
-  maybe a simple div/svg-based sparkline or progress bar — not just
-  another icon card) + a secondary row of supporting metrics + a footer
-  action or trend indicator.
+  maybe a simple div/svg-based sparkline or progress bar — not just another
+  icon card) + a secondary row of supporting metrics + a footer action or
+  trend indicator.
+- Other screens (listing, detail, settings, checkout, etc.): design them
+  with the same level of care and the same anti-generic rules below.
+
+All 3 screens must share one consistent visual language — the same palette,
+type treatment, radius, and spacing system — so they read as one product.
 
 Explicitly avoid the tells of generic AI-generated UI:
 - Do NOT make a single grid of identical, symmetric, centered
@@ -133,31 +150,42 @@ Required craft details:
 - Spacing: a deliberate rhythm (generous section padding, tighter
   internal card padding) rather than one uniform gap value everywhere.
 
-The component must still be:
+Each screen must still be:
 - Fully self-contained: the ONLY import allowed is React itself
   (`import React from 'react'`). Never import an icon library
   (`@heroicons/react`, `lucide-react`, `react-icons`, or any other
   package) — it will not resolve and the whole preview will crash. Draw
   every icon by hand as an inline `<svg>` with `<path>` elements, exactly
   like a hand-written icon, not a package import.
-- Visually differentiated from what the competitors are doing
-- Matching the brief: color mood, layout density, typography feel, target feeling
+- A single default-exported React component (one component per screen).
+- Visually differentiated from what the competitors are doing.
+- Matching the brief: color mood, layout density, typography feel, target feeling.
 
-Return EXACTLY this format — a fenced json block followed by a fenced jsx
-block. Nothing before, between, or after them. Do NOT put the component
-code inside the JSON (real components contain quotes, apostrophes, and
-newlines that break JSON string escaping) — the code goes in its own
-fence, written as plain, valid JSX:
+Return EXACTLY this format — one fenced json block, then EXACTLY 3 fenced
+jsx blocks (one per screen, in the SAME order as the "screens" name array).
+Nothing before, between (other than the fences), or after them. Do NOT put
+any component code inside the JSON (real components contain quotes,
+apostrophes, and newlines that break JSON string escaping) — each screen's
+code goes in its own jsx fence, written as plain, valid JSX:
 
 ```json
 {
   "competitors": ["url1", "url2", "url3"],
   "dominant_pattern": "one sentence describing what everyone is doing",
-  "opportunity": "one sentence on what nobody is doing"
+  "opportunity": "one sentence on what nobody is doing",
+  "screens": ["Landing", "Dashboard", "Settings"]
 }
 ```
 
 ```jsx
-// the entire React component goes here as plain JSX — not JSON-escaped
+// screen 1 ("Landing") — the entire React component, plain JSX, not JSON-escaped
+```
+
+```jsx
+// screen 2 ("Dashboard") — the entire React component, plain JSX
+```
+
+```jsx
+// screen 3 ("Settings") — the entire React component, plain JSX
 ```
 """

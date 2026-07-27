@@ -3,7 +3,6 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from models import VibeChatRequest, ResearchRequest, SettingsKeyRequest
 from gemini import run_vibe_chat, run_research
-from stitch import polish_with_stitch
 from auth import get_current_user_id, get_admin_client
 from crypto import encrypt, decrypt
 from dotenv import load_dotenv
@@ -107,17 +106,20 @@ async def chat(req: VibeChatRequest, user_id: str = Depends(get_current_user_id)
 async def build(req: ResearchRequest, user_id: str = Depends(get_current_user_id)):
     api_key = resolve_gemini_key(user_id)
     try:
-        # Phase 2 — Gemini research + codegen
+        # Phase 2 — Gemini research + multi-screen codegen
         result = await run_research(req.brief, api_key, req.model)
 
-        # Phase 3 — Stitch polish (no-ops gracefully if not configured)
-        polished_code = await polish_with_stitch(req.brief, result["component_code"])
+        screens = result.get("screens", [])
+        # component_code mirrors the first screen so the not-null DB column
+        # and any older single-component code path still have a value.
+        first_code = screens[0]["code"] if screens else ""
 
         return {
             "competitors": result.get("competitors", []),
             "dominant_pattern": result.get("dominant_pattern", ""),
             "opportunity": result.get("opportunity", ""),
-            "component_code": polished_code,
+            "screens": screens,
+            "component_code": first_code,
         }
     except HTTPException:
         raise
