@@ -11,11 +11,19 @@ load_dotenv()
 
 app = FastAPI(title="VibeUI API")
 
-# FRONTEND_URL lets a deployed frontend (Vercel, etc.) talk to this backend
-# without a code change — defaults cover the local dev server.
-_allowed_origins = {"http://localhost:3000", "http://127.0.0.1:3000"}
-if os.environ.get("FRONTEND_URL"):
-    _allowed_origins.add(os.environ["FRONTEND_URL"])
+# FRONTEND_URL lets deployed frontends talk to this backend without a code
+# change. It accepts a comma-separated list so multiple origins can be
+# allowed at once — e.g. the *.vercel.app URL AND a custom subdomain during
+# a domain switchover. Defaults cover the local dev server.
+_allowed_origins = {
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+}
+for _origin in (os.environ.get("FRONTEND_URL") or "").split(","):
+    _origin = _origin.strip().rstrip("/")
+    if _origin:
+        _allowed_origins.add(_origin)
 
 app.add_middleware(
     CORSMiddleware,
