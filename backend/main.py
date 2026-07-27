@@ -1,16 +1,12 @@
 import os
-
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sse_starlette.sse import EventSourceResponse
 from models import VibeChatRequest, ResearchRequest, SettingsKeyRequest
 from gemini import run_vibe_chat, run_research
 from stitch import polish_with_stitch
 from auth import get_current_user_id, get_admin_client
 from crypto import encrypt, decrypt
 from dotenv import load_dotenv
-import json
-import asyncio
 
 load_dotenv()
 
@@ -102,53 +98,32 @@ async def chat(req: VibeChatRequest, user_id: str = Depends(get_current_user_id)
         raise HTTPException(status_code=status, detail=detail)
 
 
-# ── Phase 2 + 3: Research → Generate → Polish (streamed SSE) ───
+# ── Phase 2 + 3: Research → Generate → Polish ───────────────────
+# A single request/response (not streamed): serverless hosts run one
+# invocation per request, so the fire-and-forget task + SSE queue pattern
+# isn't a good fit there. The frontend shows a client-side progress
+# animation while this one call runs.
 @app.post("/api/build")
 async def build(req: ResearchRequest, user_id: str = Depends(get_current_user_id)):
     api_key = resolve_gemini_key(user_id)
-    queue: asyncio.Queue = asyncio.Queue()
+    try:
+        # Phase 2 — Gemini research + codegen
+        result = await run_research(req.brief, api_key, req.model)
 
-    async def stream_callback(msg: str):
-        await queue.put({"event": "activity", "data": msg})
+        # Phase 3 — Stitch polish (no-ops gracefully if not configured)
+        polished_code = await polish_with_stitch(req.brief, result["component_code"])
 
-    async def run():
-        try:
-            # Phase 2 — Gemini research + codegen
-            result = await run_research(req.brief, api_key, req.model, stream_callback)
-
-            await stream_callback("Sending to Stitch for polish ...")
-
-            # Phase 3 — Stitch polish
-            polished_code = await polish_with_stitch(
-                req.brief, result["component_code"]
-            )
-
-            await stream_callback("Done")
-
-            await queue.put({
-                "event": "done",
-                "data": json.dumps({
-                    "competitors": result.get("competitors", []),
-                    "dominant_pattern": result.get("dominant_pattern", ""),
-                    "opportunity": result.get("opportunity", ""),
-                    "component_code": polished_code
-                })
-            })
-        except Exception as e:
-            _, detail = clean_error(e)
-            await queue.put({"event": "error", "data": detail})
-        finally:
-            await queue.put(None)
-
-    async def generator():
-        asyncio.create_task(run())
-        while True:
-            item = await queue.get()
-            if item is None:
-                break
-            yield item
-
-    return EventSourceResponse(generator())
+        return {
+            "competitors": result.get("competitors", []),
+            "dominant_pattern": result.get("dominant_pattern", ""),
+            "opportunity": result.get("opportunity", ""),
+            "component_code": polished_code,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        status, detail = clean_error(e)
+        raise HTTPException(status_code=status, detail=detail)
 
 
 @app.get("/health")
