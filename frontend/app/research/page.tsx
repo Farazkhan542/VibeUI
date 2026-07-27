@@ -58,7 +58,7 @@ export default function ResearchPage() {
   useEffect(() => {
     if (!hasHydrated) return
     if (!brief) {
-      router.replace('/')
+      router.replace('/app')
       return
     }
     if (!started.current) {
@@ -243,7 +243,7 @@ export default function ResearchPage() {
                 <button
                   onClick={() => {
                     reset()
-                    router.push('/')
+                    router.push('/app')
                   }}
                   style={{
                     backgroundColor: 'transparent',

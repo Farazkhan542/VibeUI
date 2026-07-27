@@ -43,7 +43,7 @@ export default function ResultPage() {
   useEffect(() => {
     if (!hasHydrated) return
     if (!componentCode) {
-      router.replace('/')
+      router.replace('/app')
     }
   }, [hasHydrated, componentCode])
 
@@ -77,7 +77,7 @@ export default function ResultPage() {
 
   function handleStartOver() {
     reset()
-    router.push('/')
+    router.push('/app')
   }
 
   if (!componentCode) return null

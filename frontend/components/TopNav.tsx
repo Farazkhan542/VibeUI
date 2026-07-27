@@ -20,7 +20,7 @@ export default function TopNav() {
 
   function handleNewProject() {
     reset()
-    router.push('/')
+    router.push('/app')
   }
 
   const linkStyle: React.CSSProperties = {
@@ -37,7 +37,7 @@ export default function TopNav() {
   return (
     <div className="fixed top-6 left-6 flex items-center" style={{ zIndex: 50, gap: 20 }}>
       <Link
-        href="/"
+        href="/app"
         style={{
           fontFamily: 'var(--font-syne), sans-serif',
           fontSize: 14,
